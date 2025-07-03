@@ -1,0 +1,289 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+        
+
+
+// --------------------------------------------------------------------------------
+// Models
+// --------------------------------------------------------------------------------
+// Table: roles
+model Role {
+  id     Int    @id @default(autoincrement())
+  name   String @unique @db.VarChar(50)
+  users  User[]
+  @@map("roles")
+}
+
+// Table: persons
+model Person {
+  id             Int      @id @default(autoincrement())
+  dni            String   @unique @db.VarChar(20)
+  firstName      String   @map("first_name") @db.VarChar(100)
+  lastName       String   @map("last_name") @db.VarChar(100)
+  birthDate      DateTime? @map("birth_date") @db.Date
+  gender         String?  @db.VarChar(10)
+  phoneNumber    String?  @map("phone_number") @db.VarChar(20)
+  primaryEmail   String?  @map("primary_email") @db.VarChar(100)
+  address        String?  @db.VarChar(255)
+  city           String?  @db.VarChar(100)
+  province       String?  @db.VarChar(100)
+  country        String?  @db.VarChar(100)
+  postalCode     String?  @map("postal_code") @db.VarChar(10)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user           User?
+  doctorDetails  DoctorDetails?
+  patient        Patient?
+
+  @@map("persons")
+}
+
+// Table: users
+model User {
+  id        Int      @id @default(autoincrement())
+  personId  Int      @unique @map("person_id")
+  email     String   @unique @db.VarChar(100)
+  password  String   @db.VarChar(255)
+  roleId    Int      @map("role_id")
+  isActive  Boolean  @default(true) @map("is_active")
+  isVerified Boolean @default(false) @map("is_verified")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  person    Person   @relation(fields: [personId], references: [id])
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  @@map("users")
+}
+
+// Table: specialties
+model Specialty {
+  id          Int    @id @default(autoincrement())
+  name        String @unique @db.VarChar(100)
+  description String? @db.Text
+
+  doctorSpecialties DoctorSpecialty[]
+  specialtyAreas SpecialtyArea[]
+
+  @@map("specialties")
+}
+
+// Table: doctor_details
+model DoctorDetails {
+  id            Int      @id @default(autoincrement())
+  personId      Int      @unique @map("person_id")
+  licenseNumber String   @unique @map("license_number") @db.VarChar(50)
+
+  person        Person   @relation(fields: [personId], references: [id])
+  doctorSpecialties DoctorSpecialty[]
+  doctorCenters DoctorCenter[]
+  medicalReports MedicalReport[]
+
+  // NEW RELATION: A Doctor can have many ReportTemplates
+  reportTemplates ReportTemplate[]
+
+  @@map("doctor_details")
+}
+
+// Table: doctor_specialties (Join Table)
+model DoctorSpecialty {
+  doctorId     Int @map("doctor_id")
+  specialtyId  Int @map("specialty_id")
+
+  doctor       DoctorDetails @relation(fields: [doctorId], references: [id])
+  specialty    Specialty     @relation(fields: [specialtyId], references: [id])
+
+  @@id([doctorId, specialtyId])
+  @@map("doctor_specialties")
+}
+
+// Table: health_centers
+model HealthCenter {
+  id        Int    @id @default(autoincrement())
+  name      String @db.VarChar(255)
+  type      String? @db.VarChar(50)
+  address   String? @db.VarChar(255)
+  city      String? @db.VarChar(100)
+  province  String? @db.VarChar(100)
+  country   String? @db.VarChar(100)
+
+  doctorCenters DoctorCenter[]
+  medicalReports MedicalReport[]
+
+  @@map("health_centers")
+}
+
+// Table: doctor_centers (Join Table)
+model DoctorCenter {
+  doctorId Int @map("doctor_id")
+  centerId Int @map("center_id")
+
+  doctor   DoctorDetails @relation(fields: [doctorId], references: [id])
+  center   HealthCenter  @relation(fields: [centerId], references: [id])
+
+  @@id([doctorId, centerId])
+  @@map("doctor_centers")
+}
+
+// Table: social_security_providers
+model SocialSecurityProvider {
+  id       Int    @id @default(autoincrement())
+  name     String @unique @db.VarChar(100)
+  patients Patient[]
+  @@map("social_security_providers")
+}
+
+// Table: patients
+model Patient {
+  id                     Int      @id @default(autoincrement())
+  personId               Int      @unique @map("person_id")
+  socialSecurityProviderId Int?     @map("social_security_provider_id")
+  affiliateNumber        String?  @map("affiliate_number") @db.VarChar(50)
+  bloodGroup             String?  @map("blood_group") @db.VarChar(5)
+  allergies              String?  @db.Text
+  preExistingConditions  String?  @map("pre_existing_conditions") @db.Text
+  medications            String?  @db.Text
+  isDeleted              Boolean  @default(false) @map("is_deleted")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  person                 Person   @relation(fields: [personId], references: [id])
+  socialSecurityProvider SocialSecurityProvider? @relation(fields: [socialSecurityProviderId], references: [id])
+  medicalReports         MedicalReport[]
+
+  @@map("patients")
+}
+
+// Table: report_types
+// ADDED RELATION: A ReportType can have many ReportTemplates
+model ReportType {
+  id          Int    @id @default(autoincrement())
+  name        String @unique @db.VarChar(100)
+  description String? @db.Text
+
+  areaReportTypes AreaReportType[]
+  medicalReports MedicalReport[]
+
+  // NEW RELATION: A ReportType can have many ReportTemplates
+  reportTemplates ReportTemplate[]
+
+  @@map("report_types")
+}
+
+// Table: medical_areas
+model MedicalArea {
+  id          Int    @id @default(autoincrement())
+  name        String @unique @db.VarChar(100)
+  description String? @db.Text
+
+  specialtyAreas SpecialtyArea[]
+  areaReportTypes AreaReportType[]
+
+  @@map("medical_areas")
+}
+
+// Table: specialty_area (Join Table)
+model SpecialtyArea {
+  specialtyId Int @map("specialty_id")
+  areaId      Int @map("area_id")
+
+  specialty   Specialty   @relation(fields: [specialtyId], references: [id])
+  area        MedicalArea @relation(fields: [areaId], references: [id])
+
+  @@id([specialtyId, areaId])
+  @@map("specialty_area")
+}
+
+// Table: area_report_type (Join Table)
+model AreaReportType {
+  areaId      Int @map("area_id")
+  reportTypeId Int @map("report_type_id")
+
+  area        MedicalArea @relation(fields: [areaId], references: [id])
+  reportType  ReportType  @relation(fields: [reportTypeId], references: [id])
+
+  @@id([areaId, reportTypeId])
+  @@map("area_report_type")
+}
+
+// Table: medical_reports
+model MedicalReport {
+  id           Int      @id @default(autoincrement())
+  patientId    Int      @map("patient_id")
+  doctorId     Int      @map("doctor_id")
+  reportTypeId Int      @map("report_type_id")
+  centerId     Int?     @map("center_id")
+  title        String   @db.VarChar(255)
+  content      String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  patient      Patient     @relation(fields: [patientId], references: [id])
+  doctor       DoctorDetails @relation(fields: [doctorId], references: [id])
+  reportType   ReportType  @relation(fields: [reportTypeId], references: [id])
+  healthCenter HealthCenter? @relation(fields: [centerId], references: [id])
+  reportImages ReportImage[]
+
+  @@map("medical_reports")
+}
+
+// Table: report_images
+model ReportImage {
+  id          Int      @id @default(autoincrement())
+  reportId    Int      @map("report_id")
+  url         String   @db.VarChar(255)
+  imageType   String?  @map("image_type") @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  report      MedicalReport @relation(fields: [reportId], references: [id])
+
+  @@map("report_images")
+}
+
+
+// --------------------------------------------------------------------------------
+// NEW MODEL FOR REPORT TEMPLATES
+// --------------------------------------------------------------------------------
+
+// Table: report_templates
+// Stores templates for medical reports, can be default or doctor-specific.
+model ReportTemplate {
+  id           Int      @id @default(autoincrement())
+  reportTypeId Int      @map("report_type_id") // FK to report_types.id (what type of report is this template for?)
+  doctorId     Int?     @map("doctor_id")      // FK to doctor_details.id (which doctor owns this template?)
+                                                // Nullable if it's a "global" or "default" template.
+  title        String   @db.VarChar(255)       // Title of the template (e.g., "My Standard Abdominal US Template")
+  content      String   @db.Text               // The actual template text/JSON/markup
+  isDefault    Boolean  @default(false) @map("is_default") // True if it's a system-wide default template for a report type
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations:
+  // Each ReportTemplate belongs to one ReportType
+  reportType   ReportType    @relation(fields: [reportTypeId], references: [id])
+  // Each ReportTemplate can optionally belong to one Doctor (if it's personalized)
+  doctor       DoctorDetails? @relation(fields: [doctorId], references: [id])
+
+  // Constraints:
+  // 1. A default template for a specific report type must be unique.
+  //    (This ensures there's only ONE global default per ReportType).
+  // 2. A personalized template for a doctor for a specific report type must be unique.
+  //    (This ensures a doctor only has ONE personalized template per ReportType).
+  @@unique([reportTypeId, doctorId]) // This will prevent:
+                                     // - Multiple default templates for the same report_type (if doctorId is null)
+                                     // - A doctor having multiple templates for the same report_type
+  @@map("report_templates")
+}
