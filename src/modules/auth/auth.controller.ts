@@ -1,13 +1,18 @@
-import { Request, Response } from 'express';
-import { loginService } from '../../services/authService';
+import { Request, Response } from "express";
+import { loginService } from "./auth.service";
+import asyncHandler from "../../utils/asyncHandler";
+import { loginSchema } from "./auth.validation";
 
-export const loginController = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+export const loginController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email, password } = loginSchema.parse(req.body);
 
-  try {
     const result = await loginService(email, password);
-    res.status(200).json(result);
-  } catch (error: any) {
-    res.status(401).json({ message: error.message });
+
+    res.status(200).json({
+      success: true,
+      message: 'Login exitoso',
+      data: result
+    });
   }
-};
+);

@@ -253,11 +253,6 @@ model ReportImage {
   @@map("report_images")
 }
 
-
-// --------------------------------------------------------------------------------
-// NEW MODEL FOR REPORT TEMPLATES
-// --------------------------------------------------------------------------------
-
 // Table: report_templates
 // Stores templates for medical reports, can be default or doctor-specific.
 model ReportTemplate {

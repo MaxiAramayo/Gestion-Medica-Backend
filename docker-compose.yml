@@ -25,18 +25,18 @@ services:
     depends_on:
       - db
 
-  backend:
-    build: .
-    container_name: backend
-    ports:
-      - "4000:4000"
-    depends_on:
-      - db
-    volumes:
-      - .:/app
-    env_file:
-      - .env
-    command: npm run dev
+  # backend:
+  #   build: .
+  #   container_name: backend
+  #   ports:
+  #     - "4000:4000"
+  #   depends_on:
+  #     - db
+  #   volumes:
+  #     - .:/app
+  #   env_file:
+  #     - .env
+  #   command: npm run dev
 
 volumes:
   postgres-data:
