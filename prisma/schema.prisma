@@ -146,6 +146,8 @@ model Patient {
 
 // Table: report_types
 // ADDED RELATION: A ReportType can have many ReportTemplates
+// Es la categoría clínica del informe dentro de un Área Médica. Ejemplos en Diagnóstico por Imágenes:
+   // “Ecografía obstétrica”
 model ReportType {
   id          Int    @id @default(autoincrement())
   name        String @unique @db.VarChar(100)
@@ -159,6 +161,7 @@ model ReportType {
 
   @@map("report_types")
 }
+
 
 // Table: medical_areas
 model MedicalArea {

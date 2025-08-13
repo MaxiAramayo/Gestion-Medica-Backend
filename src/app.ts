@@ -9,6 +9,7 @@ import userRoutes from "./modules/users/user.routes"; // Asumiendo que ya tienes
 import errorHandler from "./middlewares/errorHandler.middleware";
 import personRoutes from "./modules/persons/person.routes"; // Importa las rutas del módulo de personas
 import medicalArea from "./modules/medical-area/medical-area.routes";
+import reportType from "./modules/report-type/report-type.routes"; // Importa las rutas del módulo de tipos de reporte
 const app = express();
 
 // Middlewares globales
@@ -26,9 +27,9 @@ app.use(express.urlencoded({ extended: true })); // Permite a Express parsear cu
 app.use("/api/v1", userRoutes); // Ruta base para el módulo de usuarios
 // Puedes agregar más rutas de módulos aquí
 
-
 app.use("/api/v1", personRoutes); // Ejemplo para módulo de personas
-app.use("/api/v1", medicalArea)
+app.use("/api/v1", medicalArea);
+app.use("/api/v1", reportType); // Ejemplo para módulo de tipos de reporte
 // app.use("/api/auth", authRoutes); // Ejemplo para módulo de autenticación
 // app.use("/api/patients", patientRoutes); // Ejemplo para módulo de pacientes
 
