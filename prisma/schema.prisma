@@ -69,17 +69,6 @@ model User {
   @@map("users")
 }
 
-// Table: specialties
-model Specialty {
-  id          Int    @id @default(autoincrement())
-  name        String @unique @db.VarChar(100)
-  description String? @db.Text
-
-  doctorSpecialties DoctorSpecialty[]
-  specialtyAreas SpecialtyArea[]
-
-  @@map("specialties")
-}
 
 // Table: doctor_details
 model DoctorDetails {
@@ -88,26 +77,14 @@ model DoctorDetails {
   licenseNumber String   @unique @map("license_number") @db.VarChar(50)
 
   person        Person   @relation(fields: [personId], references: [id])
-  doctorSpecialties DoctorSpecialty[]
+  doctorAreaId  Int      @map("doctor_area_id")
+  doctorArea    MedicalArea @relation(fields: [doctorAreaId], references: [id])
   doctorCenters DoctorCenter[]
   medicalReports MedicalReport[]
 
-  // NEW RELATION: A Doctor can have many ReportTemplates
   reportTemplates ReportTemplate[]
 
   @@map("doctor_details")
-}
-
-// Table: doctor_specialties (Join Table)
-model DoctorSpecialty {
-  doctorId     Int @map("doctor_id")
-  specialtyId  Int @map("specialty_id")
-
-  doctor       DoctorDetails @relation(fields: [doctorId], references: [id])
-  specialty    Specialty     @relation(fields: [specialtyId], references: [id])
-
-  @@id([doctorId, specialtyId])
-  @@map("doctor_specialties")
 }
 
 // Table: health_centers
@@ -189,23 +166,12 @@ model MedicalArea {
   name        String @unique @db.VarChar(100)
   description String? @db.Text
 
-  specialtyAreas SpecialtyArea[]
+  doctorDetails DoctorDetails[]
   areaReportTypes AreaReportType[]
 
   @@map("medical_areas")
 }
 
-// Table: specialty_area (Join Table)
-model SpecialtyArea {
-  specialtyId Int @map("specialty_id")
-  areaId      Int @map("area_id")
-
-  specialty   Specialty   @relation(fields: [specialtyId], references: [id])
-  area        MedicalArea @relation(fields: [areaId], references: [id])
-
-  @@id([specialtyId, areaId])
-  @@map("specialty_area")
-}
 
 // Table: area_report_type (Join Table)
 model AreaReportType {

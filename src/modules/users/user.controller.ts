@@ -11,7 +11,6 @@ import { registerUserSchema } from "./user.validation";
  */
 export const registerUser = asyncHandler(
   async (req: Request, res: Response) => {
-    // TODO: Aquí agregarás la validación con Zod
     const userData = req.body;
 
     // Validar que los datos del usuario sean correctos

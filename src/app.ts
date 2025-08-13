@@ -8,6 +8,7 @@ import cors from "cors";
 import userRoutes from "./modules/users/user.routes"; // Asumiendo que ya tienes la estructura de módulos
 import errorHandler from "./middlewares/errorHandler.middleware";
 import personRoutes from "./modules/persons/person.routes"; // Importa las rutas del módulo de personas
+import medicalArea from "./modules/medical-area/medical-area.routes";
 const app = express();
 
 // Middlewares globales
@@ -27,6 +28,7 @@ app.use("/api/v1", userRoutes); // Ruta base para el módulo de usuarios
 
 
 app.use("/api/v1", personRoutes); // Ejemplo para módulo de personas
+app.use("/api/v1", medicalArea)
 // app.use("/api/auth", authRoutes); // Ejemplo para módulo de autenticación
 // app.use("/api/patients", patientRoutes); // Ejemplo para módulo de pacientes
 
