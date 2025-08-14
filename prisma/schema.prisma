@@ -149,44 +149,33 @@ model Patient {
 // Es la categoría clínica del informe dentro de un Área Médica. Ejemplos en Diagnóstico por Imágenes:
    // “Ecografía obstétrica”
 model ReportType {
-  id          Int    @id @default(autoincrement())
-  name        String @unique @db.VarChar(100)
-  description String? @db.Text
+  id          Int           @id @default(autoincrement())
+  areaId      Int           @map("area_id")
+  name        String        @db.VarChar(100)
+  description String?       @db.Text
 
-  areaReportTypes AreaReportType[]
-  medicalReports MedicalReport[]
-
-  // NEW RELATION: A ReportType can have many ReportTemplates
+  area           MedicalArea    @relation(fields: [areaId], references: [id])
   reportTemplates ReportTemplate[]
+  medicalReports  MedicalReport[]
 
+  @@unique([areaId, name]) // evita duplicados en la misma área
   @@map("report_types")
 }
 
 
 // Table: medical_areas
 model MedicalArea {
-  id          Int    @id @default(autoincrement())
-  name        String @unique @db.VarChar(100)
-  description String? @db.Text
-
+  id          Int           @id @default(autoincrement())
+  name        String        @unique @db.VarChar(100)
+  description String?       @db.Text
   doctorDetails DoctorDetails[]
-  areaReportTypes AreaReportType[]
+  reportTypes ReportType[]  // ← Relación directa
 
   @@map("medical_areas")
 }
 
 
-// Table: area_report_type (Join Table)
-model AreaReportType {
-  areaId      Int @map("area_id")
-  reportTypeId Int @map("report_type_id")
 
-  area        MedicalArea @relation(fields: [areaId], references: [id])
-  reportType  ReportType  @relation(fields: [reportTypeId], references: [id])
-
-  @@id([areaId, reportTypeId])
-  @@map("area_report_type")
-}
 
 // Table: medical_reports
 model MedicalReport {
@@ -225,29 +214,18 @@ model ReportImage {
 // Table: report_templates
 // Stores templates for medical reports, can be default or doctor-specific.
 model ReportTemplate {
-  id           Int      @id @default(autoincrement())
-  reportTypeId Int      @map("report_type_id") // FK to report_types.id (what type of report is this template for?)
-  doctorId     Int?     @map("doctor_id")      // FK to doctor_details.id (which doctor owns this template?)
-                                                // Nullable if it's a "global" or "default" template.
-  title        String   @db.VarChar(255)       // Title of the template (e.g., "My Standard Abdominal US Template")
-  content      String   @db.Text               // The actual template text/JSON/markup
-  isDefault    Boolean  @default(false) @map("is_default") // True if it's a system-wide default template for a report type
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id           Int           @id @default(autoincrement())
+  reportTypeId Int           @map("report_type_id")
+  doctorId     Int?          @map("doctor_id")
+  title        String        @db.VarChar(255)
+  content      String        @db.Text
+  isDefault    Boolean       @default(false) @map("is_default")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  // Relations:
-  // Each ReportTemplate belongs to one ReportType
   reportType   ReportType    @relation(fields: [reportTypeId], references: [id])
-  // Each ReportTemplate can optionally belong to one Doctor (if it's personalized)
   doctor       DoctorDetails? @relation(fields: [doctorId], references: [id])
 
-  // Constraints:
-  // 1. A default template for a specific report type must be unique.
-  //    (This ensures there's only ONE global default per ReportType).
-  // 2. A personalized template for a doctor for a specific report type must be unique.
-  //    (This ensures a doctor only has ONE personalized template per ReportType).
-  @@unique([reportTypeId, doctorId]) // This will prevent:
-                                     // - Multiple default templates for the same report_type (if doctorId is null)
-                                     // - A doctor having multiple templates for the same report_type
+  @@unique([reportTypeId, doctorId])
   @@map("report_templates")
 }

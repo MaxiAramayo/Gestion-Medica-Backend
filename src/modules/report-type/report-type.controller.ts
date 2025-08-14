@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import AppError from "../../utils/appError";
 
 import * as reportTypeService from "./report-type.service";
-import { reportTypeSchema } from "./report-type.validation";
+import { reportTypeSchema, reportTypeUpdateSchema } from "./report-type.validation";
 
 export const addReportType = async (
   req: Request,
@@ -42,7 +42,7 @@ export const getReportTypes = async (
       success: true,
       message: "Tipos de reporte obtenidos correctamente",
       data: reportTypes,
-      count: reportTypes.length,
+      count: reportTypes.data.length, 
     });
   } catch (err) {
     if (err instanceof AppError) {
@@ -93,28 +93,33 @@ export const getReportTypeById = async (
   }
 };
 
-export const updateReportType = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const updateReportType = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
-    const validatedData = reportTypeSchema.parse(req.body);
-    const reportType = await reportTypeService.updateReportType(
-      Number(id),
-      validatedData
-    );
-
-    if (!reportType) {
-      throw new AppError("Tipo de reporte no encontrado", 404);
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new AppError("ID inválido", 400);
     }
+
+    // Usar el schema parcial para update
+    const validatedData = reportTypeUpdateSchema.parse(req.body);
+
+    const reportType = await reportTypeService.updateReportType(id, validatedData);
 
     res.status(200).json({
       success: true,
       message: "Tipo de reporte actualizado correctamente",
       data: reportType,
     });
-  } catch (err) {
+  } catch (err: any) {
+    if (err) {
+      res.status(400).json({
+        success: false,
+        message: "Error de validación",
+        errors: err.flatten(),
+      });
+      return;
+    }
+
     if (err instanceof AppError) {
       res.status(err.statusCode).json({
         success: false,
@@ -158,18 +163,28 @@ export const deleteReportType = async (req: Request, res: Response): Promise<voi
 
 export const searchReportTypes = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { query } = req.body;
-    const reportTypes = await reportTypeService.searchReportTypes(query);
-    
+    const { query, areaId, page, pageSize } = req.query;
+
     if (!query || typeof query !== "string" || query.trim() === "") {
-      throw new AppError("Parámetro de búsqueda inválido", 400);
-    }
+          throw new AppError("Parámetro de búsqueda inválido", 400);
+        }
+
+    const reportTypes = await reportTypeService.searchReportTypes(
+      String(query),
+      {
+        areaId: areaId ? Number(areaId) : undefined,
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined
+      }
+    );
+    
+    
 
     res.status(200).json({
       success: true,
       message: "Tipos de reporte encontrados",
       data: reportTypes,
-      count: reportTypes.length,
+      count: reportTypes.data.length,
     });
 
   } catch (err) {

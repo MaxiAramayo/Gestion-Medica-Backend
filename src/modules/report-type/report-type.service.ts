@@ -1,184 +1,234 @@
-import {Prisma, ReportType} from "@prisma/client";
-import {prisma} from "../../config/db";
+import { Prisma, ReportType } from "@prisma/client";
+import { prisma } from "../../config/db";
 import AppError from "../../utils/appError";
 
-interface ReportTypeInput {
+const normalizeName = (s: string) => s.trim().replace(/\s+/g, " ");
+
+interface ReportTypeCreateInput {
+  areaId: number;          // ← ahora es obligatorio
   name: string;
-  description?: string;
+  description?: string | null;
 }
 
-interface ReportTypeUpdate {
+interface ReportTypeUpdateInput {
+  areaId?: number;         // ← opcional en update (si permitís mover de área)
   name?: string;
-  description?: string;
+  description?: string | null;
 }
 
-export const addReportType = async (data: ReportTypeInput): Promise<ReportType> => {
+interface ListQuery {
+  areaId?: number;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * Crear ReportType vinculado a un área
+ */
+export const addReportType = async (data: ReportTypeCreateInput): Promise<ReportType> => {
   try {
+    const area = await prisma.medicalArea.findUnique({ where: { id: data.areaId } });
+    if (!area) throw new AppError("Área médica no encontrada", 404);
 
-    //validar si el nombre existe
-    const existingReportType = await prisma.reportType.findUnique({
-      where: {
-        name: data.name,
-      },
+    const name = normalizeName(data.name);
+    if (!name) throw new AppError("El nombre es obligatorio", 400);
+
+    // Unicidad por (areaId, name)
+    const dup = await prisma.reportType.findFirst({
+      where: { areaId: data.areaId, name }
     });
-
-    if (existingReportType) {
-      throw new AppError("El tipo de reporte ya existe", 400);
-    }
+    if (dup) throw new AppError("Ya existe un tipo de reporte con ese nombre en el área indicada", 409);
 
     const reportType = await prisma.reportType.create({
       data: {
-        name: data.name,
-        description: data.description ?? null,
+        areaId: data.areaId,
+        name,
+        description: data.description ?? null
       }
     });
-
     return reportType;
-  } catch (error) {
-    //error de prisma
-   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        throw new AppError("El tipo de reporte ya existe", 400);
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2003") { // FK
+        throw new AppError("Área médica inválida", 400);
+      }
+      if (error.code === "P2002") { // unique
+        throw new AppError("Ya existe un tipo de reporte con ese nombre en el área indicada", 409);
       }
     }
     throw new AppError("Error al crear el tipo de reporte", 500);
   }
 };
 
-//todos deberan ser asi de completos los errores y la validacion
-
-export const getAllReportTypes = async (): Promise<ReportType[]> => {
+/**
+ * Listado (con filtro por área y paginación opcional)
+ */
+export const getAllReportTypes = async (q?: ListQuery): Promise<{ data: ReportType[]; total: number; page: number; pageSize: number }> => {
   try {
-    const reportTypes = await prisma.reportType.findMany();
-    return reportTypes;
-  } catch (error) {
-    //error de prisma
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        throw new AppError("El tipo de reporte ya existe", 400);
-      }
-    }
+    const where: Prisma.ReportTypeWhereInput = {};
+    if (q?.areaId) where.areaId = q.areaId;
+
+    const page = Math.max(1, q?.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, q?.pageSize ?? 20));
+    const skip = (page - 1) * pageSize;
+
+    const [total, data] = await prisma.$transaction([
+      prisma.reportType.count({ where }),
+      prisma.reportType.findMany({
+        where,
+        orderBy: [{ areaId: "asc" }, { name: "asc" }],
+        skip,
+        take: pageSize
+      })
+    ]);
+
+    return { data, total, page, pageSize };
+  } catch {
     throw new AppError("Error al obtener los tipos de reporte", 500);
   }
 };
 
-export const getReportTypeById = async (id: number): Promise<ReportType | null> => {
+/**
+ * Obtener por ID
+ */
+export const getReportTypeById = async (id: number): Promise<ReportType> => {
   try {
-
-    const reportType = await prisma.reportType.findUnique({
-      where: {
-        id,
-      },
-    });
-
-    if (!reportType) {
-      throw new AppError("Tipo de reporte no encontrado", 404);
-    }
-
-    return reportType;
-  } catch (error) {
-    //error de prisma
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        throw new AppError("El tipo de reporte ya existe", 400);
-      }
-    }
+    const rt = await prisma.reportType.findUnique({ where: { id } });
+    if (!rt) throw new AppError("Tipo de reporte no encontrado", 404);
+    return rt;
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
     throw new AppError("Error al obtener el tipo de reporte", 500);
   }
 };
 
-export const updateReportType = async (id: number, data: ReportTypeUpdate): Promise<ReportType> => {
+/**
+ * Actualizar (parcial). Soporta cambio de nombre y/o de área (opcional).
+ */
+export const updateReportType = async (id: number, data: ReportTypeUpdateInput): Promise<ReportType> => {
   try {
-    
-    
-    const existingReportType = await prisma.reportType.findUnique({
-      where: {
-        id,
-      },
-    });
+    const current = await prisma.reportType.findUnique({ where: { id } });
+    if (!current) throw new AppError("Tipo de reporte no encontrado", 404);
 
-    if (!existingReportType) {
-      throw new AppError("Tipo de reporte no encontrado", 404);
+    const nextAreaId = data.areaId ?? current.areaId;
+    if (data.areaId && data.areaId !== current.areaId) {
+      const area = await prisma.medicalArea.findUnique({ where: { id: data.areaId } });
+      if (!area) throw new AppError("Área médica no encontrada", 404);
     }
 
-    const updatedReportType = await prisma.reportType.update({
-      where: {
-        id,
-      },
+    const nextName = data.name !== undefined ? normalizeName(data.name) : current.name;
+    if (!nextName) throw new AppError("El nombre no puede quedar vacío", 400);
+
+    // Proteger unicidad por (areaId, name) si cambian
+    if (nextAreaId !== current.areaId || nextName !== current.name) {
+      const dup = await prisma.reportType.findFirst({
+        where: {
+          areaId: nextAreaId,
+          name: nextName,
+          NOT: { id } // excluir el propio
+        }
+      });
+      if (dup) throw new AppError("Ya existe un tipo de reporte con ese nombre en el área indicada", 409);
+    }
+
+    const updated = await prisma.reportType.update({
+      where: { id },
       data: {
-        ...data,
-      },
+        areaId: nextAreaId,
+        name: nextName,
+        description: data.description ?? current.description
+      }
     });
 
-    return updatedReportType;
-  } catch (error) {
-    //error de prisma
+    return updated;
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
-        throw new AppError("El tipo de reporte ya existe", 400);
+        throw new AppError("Ya existe un tipo de reporte con ese nombre en el área indicada", 409);
+      }
+      if (error.code === "P2003") {
+        throw new AppError("Área médica inválida", 400);
+      }
+      if (error.code === "P2025") {
+        throw new AppError("Tipo de reporte no encontrado", 404);
       }
     }
     throw new AppError("Error al actualizar el tipo de reporte", 500);
   }
 };
 
+/**
+ * Eliminar (bloquea si hay FKs: templates o medical_reports)
+ */
 export const deleteReportType = async (id: number): Promise<void> => {
   try {
-    const existingReportType = await prisma.reportType.findUnique({
-      where: {
-        id,
-      },
+    const current = await prisma.reportType.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { reportTemplates: true, medicalReports: true }
+        }
+      }
     });
+    if (!current) throw new AppError("Tipo de reporte no encontrado", 404);
 
-    if (!existingReportType) {
-      throw new AppError("Tipo de reporte no encontrado", 404);
+    if (current._count.reportTemplates || current._count.medicalReports) {
+      throw new AppError("No se puede eliminar: el tipo de reporte está en uso (plantillas o informes existentes).", 409);
     }
 
-    await prisma.reportType.delete({
-      where: {
-        id,
-      },
-    });
-  } catch (error) {
-    //error de prisma
+    await prisma.reportType.delete({ where: { id } });
+  } catch (error: any) {
+    if (error instanceof AppError) throw error;
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        throw new AppError("El tipo de reporte ya existe", 400);
+      if (error.code === "P2003") {
+        throw new AppError("No se puede eliminar: el tipo de reporte está en uso por claves foráneas.", 409);
+      }
+      if (error.code === "P2025") {
+        throw new AppError("Tipo de reporte no encontrado", 404);
       }
     }
     throw new AppError("Error al eliminar el tipo de reporte", 500);
   }
 };
 
-export const searchReportTypes = async (query: string): Promise<ReportType[]> => {
+/**
+ * Búsqueda por texto (opcionalmente filtrada por área) + orden
+ */
+export const searchReportTypes = async (query: string, q?: { areaId?: number; page?: number; pageSize?: number }): Promise<{ data: ReportType[]; total: number; page: number; pageSize: number }> => {
   try {
-    const reportTypes = await prisma.reportType.findMany({
-      where: {
-        OR: [
-          {
-            name: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-          {
-            description: {
-              contains: query,
-              mode: "insensitive",
-            },
-          },
-        ],
-      },
-    });
+    const term = (query ?? "").trim();
+    if (!term) return { data: [], total: 0, page: 1, pageSize: q?.pageSize ?? 20 };
 
-    return reportTypes;
-  } catch (error) {
-    //error de prisma
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2002") {
-        throw new AppError("El tipo de reporte ya existe", 400);
-      }
-    }
+    const where: Prisma.ReportTypeWhereInput = {
+      AND: [
+        q?.areaId ? { areaId: q.areaId } : {},
+        {
+          OR: [
+            { name: { contains: term, mode: "insensitive" } },
+            { description: { contains: term, mode: "insensitive" } }
+          ]
+        }
+      ]
+    };
+
+    const page = Math.max(1, q?.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, q?.pageSize ?? 20));
+    const skip = (page - 1) * pageSize;
+
+    const [total, data] = await prisma.$transaction([
+      prisma.reportType.count({ where }),
+      prisma.reportType.findMany({
+        where,
+        orderBy: [{ areaId: "asc" }, { name: "asc" }],
+        skip,
+        take: pageSize
+      })
+    ]);
+
+    return { data, total, page, pageSize };
+  } catch {
     throw new AppError("Error al buscar los tipos de reporte", 500);
   }
 };
