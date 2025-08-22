@@ -75,6 +75,7 @@ model DoctorDetails {
   id            Int      @id @default(autoincrement())
   personId      Int      @unique @map("person_id")
   licenseNumber String   @unique @map("license_number") @db.VarChar(50)
+  isActive      Boolean  @default(true) @map("is_active")
 
   person        Person   @relation(fields: [personId], references: [id])
   doctorAreaId  Int      @map("doctor_area_id")

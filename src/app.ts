@@ -10,6 +10,8 @@ import errorHandler from "./middlewares/errorHandler.middleware";
 import personRoutes from "./modules/persons/person.routes"; // Importa las rutas del módulo de personas
 import medicalArea from "./modules/medical-area/medical-area.routes";
 import reportType from "./modules/report-type/report-type.routes"; // Importa las rutas del módulo de tipos de reporte
+import patientRoutes from "./modules/patient/patient.routes"; // Importa las rutas del módulo de pacientes
+import doctorRoutes from "./modules/doctor/doctor.routes"; // Importa las rutas del módulo de doctores
 const app = express();
 
 // Middlewares globales
@@ -30,7 +32,8 @@ app.use("/api/v1", userRoutes); // Ruta base para el módulo de usuarios
 app.use("/api/v1", personRoutes); // Ejemplo para módulo de personas
 app.use("/api/v1", medicalArea);
 app.use("/api/v1", reportType); // Ejemplo para módulo de tipos de reporte
-// app.use("/api/auth", authRoutes); // Ejemplo para módulo de autenticación
+app.use("/api/v1", patientRoutes); // Ejemplo para módulo de pacientes
+app.use("/api/v1", doctorRoutes); // Ejemplo para módulo de doctores
 // app.use("/api/patients", patientRoutes); // Ejemplo para módulo de pacientes
 
 // Ruta de prueba
