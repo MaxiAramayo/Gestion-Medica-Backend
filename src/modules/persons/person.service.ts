@@ -53,6 +53,9 @@ export const addPerson = async (data: CreatePersonInput): Promise<Person> => {
 
     return newPerson;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         throw new AppError("Una persona con este DNI ya existe", 409);
@@ -75,6 +78,9 @@ export const getAllPersons = async (): Promise<Person[]> => {
       },
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al obtener las personas", 500);
   }
 };

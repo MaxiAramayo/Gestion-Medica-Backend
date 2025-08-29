@@ -22,6 +22,9 @@ export const createDoctor = async (data: DoctorInput): Promise<DoctorDetails> =>
 
     return createdDoctor;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al crear el doctor", 500);
   }
 };
@@ -33,6 +36,9 @@ export const getDoctorById = async (id: string): Promise<DoctorDetails | null> =
     });
     return doctor;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al obtener el doctor", 500);
   }
 };
@@ -42,6 +48,9 @@ export const getDoctors = async (): Promise<DoctorDetails[]> => {
     const doctors = await prisma.doctorDetails.findMany();
     return doctors;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al obtener los doctores", 500);
   }
 };
@@ -64,6 +73,9 @@ export const deleteDoctor = async (id: string): Promise<DoctorDetails | null> =>
 
     return doctorDeleted;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al eliminar el doctor", 500);
   }
 };
@@ -78,6 +90,9 @@ export const updateDoctor = async (id: string, data: DoctorInput): Promise<Docto
 
     return updatedDoctor;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al actualizar el doctor", 500);
   }
 };

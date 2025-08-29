@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// ============================================================================
+// ESQUEMAS BASADOS EN EL SCHEMA DE PRISMA Y SERVICIOS EXISTENTES
+// ============================================================================
+
 // Esquema específico para registro de usuario - solo campos mínimos requeridos
 const createPersonSchemaForUser = z.object({
   // Campos OBLIGATORIOS
@@ -54,7 +58,10 @@ export const userIdParamSchema = z.object({
   })
 });
 
-// Tipos inferidos
+// ============================================================================
+// TIPOS INFERIDOS
+// ============================================================================
+
 export type RegisterUserInput = z.infer<typeof registerUserSchema>;
 export type LoginUserInput = z.infer<typeof loginUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

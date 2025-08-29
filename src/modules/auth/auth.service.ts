@@ -14,12 +14,12 @@ export const loginService = async (email: string, password: string) => {
     });
 
     if (!user || !user.isActive) {
-      throw new Error("Usuario no encontrado o inactivo");
+      throw new AppError("Usuario no encontrado o inactivo", 404);
     }
 
     const isMatch = await comparePasswords(password, user.password);
     if (!isMatch) {
-      throw new Error("Credenciales inválidas");
+      throw new AppError("Credenciales inválidas", 401);
     }
 
     const token = generateToken({ id: user.id, role: user.role.id });
@@ -33,7 +33,12 @@ export const loginService = async (email: string, password: string) => {
         isActive: user.isActive,
       },
     };
-  } catch (error) {
-    throw new AppError("Error al iniciar sesión", 500);
+  } catch (error: any) {
+    // Si ya es un AppError, lo re-lanzamos tal como está
+    if (error instanceof AppError) {
+      throw error;
+    }
+    // Solo para errores inesperados
+    throw new AppError(error.message || "Error al iniciar sesión", 500);
   }
 };

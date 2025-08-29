@@ -37,6 +37,9 @@ export const searchPatients = async (query: queryParams): Promise<Person[]> => {
 
     return persons;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al buscar pacientes", 500);
   }
 };
@@ -75,6 +78,9 @@ export const createPatient = async (
 
     return patient;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al crear paciente", 500);
   }
 };
@@ -86,6 +92,9 @@ export const getPatientById = async (id: string): Promise<Patient | null> => {
     });
     return patient;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al obtener paciente", 500);
   }
 };
@@ -95,6 +104,9 @@ export const getAllPatients = async (): Promise<Patient[]> => {
     const patients = await prisma.patient.findMany();
     return patients;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al obtener pacientes", 500);
   }
 };
@@ -110,6 +122,9 @@ export const updatePatient = async (
     });
     return patient;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Error al actualizar paciente", 500);
   }
 };

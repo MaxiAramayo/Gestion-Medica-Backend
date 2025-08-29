@@ -1,52 +1,37 @@
-// src/app.ts
-
-import express, { Request, Response } from "express";
-import config from "./config"; // Importamos la configuración, incluyendo el puerto
-const { port: PUERTO } = config; // Obtenemos el puerto desde nuestra
+import express from "express";
 import cors from "cors";
-// No importamos dotenv aquí, ya lo hace config/index.ts
-import userRoutes from "./modules/users/user.routes"; // Asumiendo que ya tienes la estructura de módulos
+import config from "./config";
 import errorHandler from "./middlewares/errorHandler.middleware";
-import personRoutes from "./modules/persons/person.routes"; // Importa las rutas del módulo de personas
-import medicalArea from "./modules/medical-area/medical-area.routes";
-import reportType from "./modules/report-type/report-type.routes"; // Importa las rutas del módulo de tipos de reporte
-import patientRoutes from "./modules/patient/patient.routes"; // Importa las rutas del módulo de pacientes
-import doctorRoutes from "./modules/doctor/doctor.routes"; // Importa las rutas del módulo de doctores
+
+// Importa rutas de módulos
+import userRoutes from "./modules/users/user.routes";
+import personRoutes from "./modules/persons/person.routes";
+import medicalAreaRoutes from "./modules/medical-area/medical-area.routes";
+import reportTypeRoutes from "./modules/report-type/report-type.routes";
+import patientRoutes from "./modules/patient/patient.routes";
+import doctorRoutes from "./modules/doctor/doctor.routes";
+
 const app = express();
 
 // Middlewares globales
-app.use(cors()); // Manejo de CORS
-app.use(express.json()); // Permite a Express parsear cuerpos de solicitud JSON
-app.use(express.urlencoded({ extended: true })); // Permite a Express parsear cuerpos de solicitud URL-encoded
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Rutas de la API
-// Preferiblemente, deberías importar todas tus rutas aquí
-// Ejemplo:
-// import authRoutes from './modules/auth/auth.routes';
-// import patientRoutes from './modules/patients/patient.routes';
-// ...etc.
-
-app.use("/api/v1", userRoutes); // Ruta base para el módulo de usuarios
-// Puedes agregar más rutas de módulos aquí
-
-app.use("/api/v1", personRoutes); // Ejemplo para módulo de personas
-app.use("/api/v1", medicalArea);
-app.use("/api/v1", reportType); // Ejemplo para módulo de tipos de reporte
-app.use("/api/v1", patientRoutes); // Ejemplo para módulo de pacientes
-app.use("/api/v1", doctorRoutes); // Ejemplo para módulo de doctores
-// app.use("/api/patients", patientRoutes); // Ejemplo para módulo de pacientes
+app.use("/api/v1", userRoutes);
+app.use("/api/v1", personRoutes);
+app.use("/api/v1", medicalAreaRoutes);
+app.use("/api/v1", reportTypeRoutes);
+app.use("/api/v1", patientRoutes);
+app.use("/api/v1", doctorRoutes);
 
 // Ruta de prueba
-app.get("/", (_req: Request, res: Response) => {
-  res.send(`API funcionando 🚀`);
+app.get("/", (_req, res) => {
+  res.send("API funcionando 🚀");
 });
 
-// Importar y usar el middleware de manejo de errores al final (opcional, pero buena práctica)
-// import errorHandler from './middlewares/errorHandler.middleware';
-// app.use(errorHandler);
-
-// <--- MUY IMPORTANTE: El middleware de errores SIEMPRE debe ir AL FINAL
+// Middleware de manejo de errores (siempre al final)
 app.use(errorHandler);
 
-// Exportamos la aplicación Express para que server.ts la pueda importar y escuchar
 export default app;
