@@ -7,7 +7,7 @@ import { z } from 'zod';
 // Esquema específico para registro de usuario - solo campos mínimos requeridos
 const createPersonSchemaForUser = z.object({
   // Campos OBLIGATORIOS
-  dni: z.string().min(7, "El DNI debe tener al menos 7 caracteres").max(20, "El DNI no debe exceder los 20 caracteres"),
+  dni: z.number().min(1000000, "El DNI debe tener al menos 7 dígitos").max(99999999, "El DNI no debe exceder los 8 dígitos"),
   firstName: z.string().min(1, "El nombre es obligatorio").max(100, "El nombre no debe exceder los 100 caracteres"),
   lastName: z.string().min(1, "El apellido es obligatorio").max(100, "El apellido no debe exceder los 100 caracteres"),
   

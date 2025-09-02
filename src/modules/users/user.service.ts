@@ -12,35 +12,49 @@ import AppError from "../../utils/appError";
  */
 export const createUser = async (data: RegisterUserInput): Promise<User> => {
   try {
+    console.log("🔍 Datos recibidos en createUser:", JSON.stringify(data, null, 2));
+    
     const { email, password, roleId } = data;
     const personData = data.person;
+    
+    console.log("📧 Email:", email);
+    console.log("🔐 Password length:", password?.length);
+    console.log("👤 Role ID:", roleId);
+    console.log("👤 Person data:", JSON.stringify(personData, null, 2));
+    
     // Hashear la contraseña antes de guardar
     const hashedPassword = await hashPassword(password);
+    console.log("✅ Password hasheada correctamente");
+    
     let personId: number;
-    //validamos si el email ya existe
-
+    
+    // Validamos si el email ya existe
+    console.log("🔍 Verificando si email existe...");
     const existEmail = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existEmail) {
+      console.log("❌ Email ya existe");
       throw new AppError("El email ya está registrado", 409);
     }
-    //validamos si el dni ya existe
-
+    console.log("✅ Email disponible");
+    
+    // Validamos si el dni ya existe
+    console.log("🔍 Verificando si DNI existe...");
     const existDni = await prisma.person.findUnique({
-      where: { dni: personData.dni },
+      where: { dni: String(personData.dni) },
     });
 
-    //si no existe a la persona
+    // Si no existe la persona
     if (!existDni) {
-      // Creamos la persona
-      // ✅ CONVERSIÓN EXPLÍCITA: undefined → null
+      console.log("👤 Persona no existe, creando nueva...");
+      
+      // Normalizamos los datos de la persona
       const normalizedPersonData = {
-        dni: personData.dni,
+        dni: String(personData.dni),
         firstName: personData.firstName,
         lastName: personData.lastName,
-        // Conversión explícita de undefined a null
         birthDate: personData.birthDate ?? null,
         gender: personData.gender ?? null,
         phoneNumber: personData.phoneNumber ?? null,
@@ -52,45 +66,90 @@ export const createUser = async (data: RegisterUserInput): Promise<User> => {
         postalCode: personData.postalCode ?? null,
       };
 
-      // almacenamos a la persona en la base de datos
+      console.log("📋 Datos normalizados de persona:", JSON.stringify(normalizedPersonData, null, 2));
+
+      // Almacenamos la persona en la base de datos
       const newPerson = await prisma.person.create({
         data: normalizedPersonData,
       });
       
+      console.log("✅ Persona creada con ID:", newPerson.id);
       personId = newPerson.id;
 
     } else {
-      // Si existe, usamos el ID de la persona existente
+      console.log("👤 Persona ya existe con ID:", existDni.id);
       personId = existDni.id;
     }
 
+    // Verificar que el rol existe antes de crear el usuario
+    console.log("🔍 Verificando si el rol existe...");
+    const roleExists = await prisma.role.findUnique({
+      where: { id: roleId }
+    });
+
+    if (!roleExists) {
+      console.log("❌ Rol no existe:", roleId);
+      throw new AppError("El rol especificado no existe", 400);
+    }
+    console.log("✅ Rol encontrado:", roleExists.name);
+
     // Creamos el usuario
+    console.log("👤 Creando usuario...");
     const newUser = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         roleId,
-        personId, // Vinculamos el ID de la persona
+        personId,
       },
     });
 
+    console.log("✅ Usuario creado exitosamente con ID:", newUser.id);
     return newUser;
+    
   } catch (error) {
-    // Re-lanzar AppErrors existentes (ej. DNI duplicado de personService, email duplicado)
+    console.error("❌ Error en createUser:", error);
+    
+    // Re-lanzar AppErrors existentes
     if (error instanceof AppError) {
+      console.log("🔄 Re-lanzando AppError:", error.message);
       throw error;
     }
-    // Manejar errores específicos de Prisma que puedan ocurrir en este servicio
+    
+    // Manejar errores específicos de Prisma
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2003" && error.meta?.field_name === "roleId") {
-        throw new AppError("El rol especificado no existe o es inválido.", 400);
+      console.log("🗃️ Error de Prisma:", error.code, error.message);
+      console.log("🗃️ Meta:", error.meta);
+      
+      if (error.code === "P2003") {
+        const field = error.meta?.field_name;
+        if (field === "roleId") {
+          throw new AppError("El rol especificado no existe o es inválido.", 400);
+        }
+        if (field === "personId") {
+          throw new AppError("Error al vincular la persona con el usuario.", 500);
+        }
+        throw new AppError(`Error de referencia en el campo: ${field}`, 400);
       }
-      // Si la transacción (si la implementas) falla por alguna razón no manejada
-      // Esto es un catch-all para errores de DB no esperados
-      throw new AppError("Error de base de datos al registrar usuario.", 500);
+      
+      if (error.code === "P2002") {
+        const fields = error.meta?.target as string[];
+        throw new AppError(`Ya existe un registro con estos datos: ${fields?.join(', ')}`, 409);
+      }
+      
+      throw new AppError(`Error de base de datos: ${error.message}`, 500);
     }
-    // Error genérico para cualquier otro tipo de error no esperado
-    throw new AppError("Error interno del servidor al registrar usuario.", 500);
+    
+    // Log completo del error para debugging
+    console.error("💥 Error completo:", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      ...error
+    });
+    
+    // Error genérico
+    throw new AppError(`Error interno del servidor: ${error.message}`, 500);
   }
 };
 
