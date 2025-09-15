@@ -22,14 +22,18 @@ export const loginService = async (email: string, password: string) => {
       throw new AppError("Credenciales inválidas", 401);
     }
 
-    const token = generateToken({ id: user.id, role: user.role.id });
-
+    const token = generateToken({
+      id: user.id,
+      role: user.role.name,
+      email: user.email,
+      isActive: user.isActive,
+    });
     return {
       token,
       user: {
         id: user.id,
         email: user.email,
-        role: user.roleId,
+        role: user.role.name,
         isActive: user.isActive,
       },
     };
@@ -42,3 +46,4 @@ export const loginService = async (email: string, password: string) => {
     throw new AppError(error.message || "Error al iniciar sesión", 500);
   }
 };
+

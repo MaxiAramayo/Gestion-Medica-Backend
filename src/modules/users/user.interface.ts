@@ -59,7 +59,7 @@ export interface RegisterUserInput {
   password: string;
   roleId: number;
   person: {
-    dni: string;
+    dni: number;
     firstName: string;
     lastName: string;
     birthDate?: Date | null;

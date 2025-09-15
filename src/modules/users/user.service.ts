@@ -140,16 +140,11 @@ export const createUser = async (data: RegisterUserInput): Promise<User> => {
       throw new AppError(`Error de base de datos: ${error.message}`, 500);
     }
     
-    // Log completo del error para debugging
-    console.error("💥 Error completo:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-      ...error
-    });
+
     
     // Error genérico
-    throw new AppError(`Error interno del servidor: ${error.message}`, 500);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    throw new AppError(`Error interno del servidor: ${errorMessage}`, 500);
   }
 };
 
